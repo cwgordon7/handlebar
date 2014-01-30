@@ -13,6 +13,7 @@ public class Navigator {
 	private enum Mode { TURN, STRAIGHT, WALL_FOLLOW, NEUTRAL, STOP }
 
 	public volatile Pose pose;
+	public volatile ProbabilisticPose probPose;
 	private volatile Mode mode = Mode.NEUTRAL;
 	private volatile double targetHeading; // Radians.
 	private volatile double speed; // Between 0 and 1.
@@ -26,19 +27,29 @@ public class Navigator {
 		this.robot = bot;
 		this.map = m;
 		pose = m.startPose;
+		probPose = new ProbabilisticPose(m.startPose, 1000);
         // TODO: Tune these parameters based on experimentation.
         new PidController(1, 0, 0.75,
         		new ErrorCalculator() {
 		        	@Override
 			        public double getError() {
-		        		double thetaAvg = (robot.getHeadingRadians() + pose.theta) / 2.0;
-		        		pose.theta = robot.getHeadingRadians();
-		        		double distanceSinceLastUpdate = (robot.getTotalDistance() - distance) / map.gridSize; // The "unit" here is the grid size, or 22 inches. EG if the robot has gone 44 inches, the "distance travelled" will be 2 grid squares.
+		        		final double dTheta = robot.getHeadingRadians() - pose.theta;
+		        		final double distanceSinceLastUpdate = (robot.getTotalDistance() - distance) / map.gridSize; // The "unit" here is the grid size, or 22 inches. EG if the robot has gone 44 inches, the "distance travelled" will be 2 grid squares.
 		        		distance = robot.getTotalDistance();
-		        		if (mode.equals(Mode.STRAIGHT)) {
-			        		pose.x += Math.cos(thetaAvg) * distanceSinceLastUpdate;
-			        		pose.y += Math.sin(thetaAvg) * distanceSinceLastUpdate;
-		        		}
+		        		new Thread(new Runnable() {
+							@Override
+							public void run() {
+								// TODO Auto-generated method stub
+								if (mode.equals(Mode.STRAIGHT)) {
+									probPose.perturb(distanceSinceLastUpdate, dTheta);
+								}
+								else {
+									probPose.perturb(0.0, dTheta);
+								}
+				        		probPose.resample(map, new double[] { robot.getSonar1(), robot.getSonar2(), robot.getSonar3() });
+				        		pose = probPose.representativePose();
+							}
+		        		}).start();
 		        		switch (mode) {
 			        		case WALL_FOLLOW:
 			        			return 0.0; // TODO
@@ -160,24 +171,6 @@ public class Navigator {
 			System.out.println("Forward " + Math.sqrt((point.y - pose.y) * (point.y - pose.y) + (point.x - pose.x) * (point.x - pose.x)));
 			forwardSquares(0.5, Math.sqrt((point.y - pose.y) * (point.y - pose.y) + (point.x - pose.x) * (point.x - pose.x)));
 		}
-	}
-
-	/**
-	 * Probabilistic re-localization based on gaussian error assumption around estimated location and data from ultrasonic sensors.
-	 */
-	// IDEA: State should be a probability distribution rather than a concrete vector.
-	public void relocalize() {
-		// Save the original pose.
-		Pose originalPose = pose;
-		// TOOO
-		//double[] sonarEstimates = mapBasedSonarEstimates();
-		final double NUM_GUESSES = 100;
-		final double PROB_THRESH = 0.01;
-		for (int i = 0; i < NUM_GUESSES; i++) {
-			// Perturb according to some gaussian, score; calculate probability
-			// TODO finish
-		}
-		System.out.println(sonarEstimates[0] + " | " + sonarEstimates[1] + " | " + sonarEstimates[2]);
 	}
 
 	/**

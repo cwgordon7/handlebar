@@ -25,6 +25,11 @@ public class PidController {
                     double d_term = d_ * (err - last_err);
                     last_err = err;
                     eh.handleError(p_term + i_term + d_term);
+	        		try {
+	        			Thread.sleep(30);
+	        		} catch (InterruptedException e) {
+	        			e.printStackTrace();
+	        		}
                     Thread.yield();
                 }
             }
