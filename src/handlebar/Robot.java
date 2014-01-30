@@ -20,9 +20,9 @@ public class Robot {
 	// Encoder
 	final private Encoder encoder = new Encoder(33, 34); // TODO: Which is which? Wrong order?
 	// Ultrasonic
-	final private Ultrasonic sonic1 = new Ultrasonic(24, 23);
-	final private Ultrasonic sonic2 = new Ultrasonic(26, 25);
-	final private Ultrasonic sonic3 = new Ultrasonic(28, 27);
+	final private Ultrasonic sonic1 = new Ultrasonic(28, 27); // Right side.
+	final private Ultrasonic sonic2 = new Ultrasonic(26, 25); // Center
+	final private Ultrasonic sonic3 = new Ultrasonic(24, 23); // Left side
 
 	// Internal tracking.
 	private long lastTimeMillis;
@@ -35,9 +35,12 @@ public class Robot {
     // Speed scaling from 0.05 to 0.3. TODO: Raise the limit to go faster.
 	final public double MIN_POWER = 0.05;
 	final public double POWER_SCALE = 0.25;
+	// Sorter constants
+	final public double SORTER_GREEN = 55.0;
+	final public double SORTER_RED = 120.0;
 
-	public Robot() {
-		final Robot self = this;
+	public Robot(double initHeading) {
+		heading = initHeading;
 		try {
 			maple = new MapleComm(SerialPortType.LINUX);
 			maple.registerDevice(motorACytron);
@@ -56,8 +59,10 @@ public class Robot {
 					while (true) {
 						maple.updateSensorData();
 						long time = System.currentTimeMillis();
-						long millis = time - lastTimeMillis;
-						heading += (millis * gyro.getAngularSpeed()) / 1000.0;
+						if (lastTimeMillis > 0) {
+							long millis = time - lastTimeMillis;
+							heading += (millis * gyro.getAngularSpeed()) / -1000.0;
+						}
 						lastTimeMillis = time;
 						Thread.yield();
 					}
@@ -95,14 +100,14 @@ public class Robot {
 	 * Gets the distance given by sonar 2, in meters.
 	 */
 	public double getSonar2() {
-		return sonic1.getDistance();
+		return sonic2.getDistance();
 	}
 
 	/**
 	 * Gets the distance given by sonar 3, in meters.
 	 */
 	public double getSonar3() {
-		return sonic1.getDistance();
+		return sonic3.getDistance();
 	}
 
 	/**
@@ -123,8 +128,8 @@ public class Robot {
 		}
 		// TODO: Some wires got reversed somewhere down the line. We need
 		// these negative signs now.
-		motorACytron.setSpeed(-powerA);
-		motorBCytron.setSpeed(-powerB);
+		motorACytron.setSpeed(powerA);
+		motorBCytron.setSpeed(powerB);
 		modified();
 	}
 

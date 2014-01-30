@@ -1,15 +1,19 @@
 package handlebar;
 
+import java.awt.geom.Line2D;
+import java.util.List;
+
 import handlebar.PathFinder.NoPathFoundException;
 import comm.BotClientMap;
 import comm.BotClientMap.Point;
 import comm.BotClientMap.Pose;
+import comm.BotClientMap.Wall;
 
 public class Navigator {
-	public enum Mode { TURN, STRAIGHT, WALL_FOLLOW, NEUTRAL }
+	private enum Mode { TURN, STRAIGHT, WALL_FOLLOW, NEUTRAL, STOP }
 
-	private volatile Pose pose;
-	private volatile Mode mode;
+	public volatile Pose pose;
+	private volatile Mode mode = Mode.NEUTRAL;
 	private volatile double targetHeading; // Radians.
 	private volatile double speed; // Between 0 and 1.
 	private volatile double distance; // Inches.
@@ -31,25 +35,28 @@ public class Navigator {
 		        		pose.theta = robot.getHeadingRadians();
 		        		double distanceSinceLastUpdate = (robot.getTotalDistance() - distance) / map.gridSize; // The "unit" here is the grid size, or 22 inches. EG if the robot has gone 44 inches, the "distance travelled" will be 2 grid squares.
 		        		distance = robot.getTotalDistance();
-		        		pose.x += Math.cos(thetaAvg) * distanceSinceLastUpdate;
-		        		pose.y += Math.sin(thetaAvg) * distanceSinceLastUpdate;
+		        		if (mode.equals(Mode.STRAIGHT)) {
+			        		pose.x += Math.cos(thetaAvg) * distanceSinceLastUpdate;
+			        		pose.y += Math.sin(thetaAvg) * distanceSinceLastUpdate;
+		        		}
 		        		switch (mode) {
 			        		case WALL_FOLLOW:
 			        			return 0.0; // TODO
 			        		case NEUTRAL:
+			        		case STOP:
 			        			return 0.0;
 			        		case TURN:
 			        		case STRAIGHT:
 			        		default:
-			        			return normalize(pose.theta - targetHeading);
+			        			return normalize(targetHeading - pose.theta);
 		        		}
 			        }
 			    },
 		        new ErrorHandler() {
 					@Override
 					public void handleError(double error) {
-						double m1 = error / -Math.PI;
-						double m2 = error / Math.PI;
+						double m1 = error / Math.PI;
+						double m2 = error / -Math.PI;
 						switch (mode) {
 							case TURN:
 								robot.setMotors(m1, m2);
@@ -61,6 +68,8 @@ public class Navigator {
 								// TODO;
 								break;
 							case NEUTRAL:
+								break;
+							case STOP:
 								robot.setMotors(0, 0);
 								break;
 						}
@@ -83,9 +92,17 @@ public class Navigator {
 		setMode(Mode.STRAIGHT);
 		double until = this.distance + inches;
 		while (this.distance < until) {
+			if (Math.random() < 0.01) {
+				System.out.println(this.distance + " < " + until);
+			}
+			try {
+				Thread.sleep(30);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 			Thread.yield();
 		}
-		setMode(Mode.NEUTRAL);
+		setMode(Mode.TURN);
 	}
 
 	/**
@@ -96,27 +113,129 @@ public class Navigator {
 	}
 
 	/**
-	 * Turns.
+	 * Turns to a relative heading.
 	 */
 	public void turnRadians(double radians) {
-		this.targetHeading += radians;
+		turnToHeadingRadians(this.targetHeading + radians);
+	}
+
+	/**
+	 * Turns to an absolute heading.
+	 */
+	public void turnToHeadingRadians(double radians) {
+		this.targetHeading = radians;
 		setMode(Mode.TURN);
 		while (Math.abs(this.pose.theta - targetHeading) > TURN_THRESHOLD_RADIANS) {
+			try {
+				Thread.sleep(30);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 			Thread.yield();
 		}
-		setMode(Mode.NEUTRAL);
+	}
+
+	/**
+	 * Halt.
+	 */
+	public void halt() {
+		setMode(Mode.STOP);
 	}
 
 	/**
 	 * Moves to a grid point.
 	 */
-	public void moveToPoint(Point p) {
-		try {
-			PathFinder.findPath(map, pose, p);
-		} catch (NoPathFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	public void moveToPoint(Point p) throws NoPathFoundException {
+		List<Point> points = PathFinder.findPath(map, pose, p);
+		boolean first = true;
+		for (Point point : points) {
+			if (first) {
+				first = false;
+				continue;
+			}
+			System.out.println("At " + pose + ", moving to " + point);
+			double theta = Math.atan2(point.y - pose.y, point.x - pose.x);
+			System.out.println("Turning to " + (int)180 / Math.PI * theta);
+			turnToHeadingRadians(theta);
+			System.out.println("Forward " + Math.sqrt((point.y - pose.y) * (point.y - pose.y) + (point.x - pose.x) * (point.x - pose.x)));
+			forwardSquares(0.5, Math.sqrt((point.y - pose.y) * (point.y - pose.y) + (point.x - pose.x) * (point.x - pose.x)));
 		}
+	}
+
+	/**
+	 * Probabilistic re-localization based on gaussian error assumption around estimated location and data from ultrasonic sensors.
+	 */
+	// IDEA: State should be a probability distribution rather than a concrete vector.
+	public void relocalize() {
+		// Save the original pose.
+		Pose originalPose = pose;
+		double[] sonarEstimates = mapBasedSonarEstimates();
+		final double NUM_GUESSES = 100;
+		final double PROB_THRESH = 0.01;
+		for (int i = 0; i < NUM_GUESSES; i++) {
+			// Perturb according to some gaussian, score; calculate probability
+			// TODO finish
+		}
+		System.out.println(sonarEstimates[0] + " | " + sonarEstimates[1] + " | " + sonarEstimates[2]);
+	}
+
+	/**
+	 * Calculates a score for the given sonar readings, roughly representing the probability that they describe the true state (given the observed state).
+	 * @param sonarReadings
+	 * @return
+	 */
+	private double score(double sonarReadings) {
+		final double BOTCHED_READING = 0.05; // Perhaps 5% of readings will be botched?
+		// TODO finish
+		return 0.5;
+	}
+
+	private double[] mapBasedSonarEstimates() {
+		System.out.println(pose);
+		double thetaLeft = pose.theta + Math.PI / 2;
+		double thetaStraight = pose.theta;
+		double thetaRight = pose.theta - Math.PI / 2;
+		final double TEN_METERS = metersToGridUnits(10);
+		double[] ss = new double[3];
+		int i = 0;
+		for (double theta : new double[] {thetaLeft, thetaStraight, thetaRight}) {
+			double s = Double.POSITIVE_INFINITY;
+			for (Wall w : map.walls) {
+				if (Line2D.linesIntersect(w.start.x, w.start.y, w.end.x, w.end.y, pose.x, pose.y, pose.x + TEN_METERS * Math.cos(theta), pose.y + TEN_METERS * Math.sin(theta))) {
+					double r;
+					if (w.end.x - w.start.x != 0) {
+						double m = (w.end.y - w.start.y) / (w.end.x - w.start.x);
+						double b = w.start.y - (m * w.start.x);
+						r = (m * pose.x + b - pose.y) / (Math.sin(theta) - m * Math.cos(theta));
+					}
+					else {
+						double k = w.end.x;
+						r = (k - pose.x) / Math.cos(theta);
+					}
+					if (r > 0 && r < s) {
+						s = r;
+					}
+				}
+			}
+			ss[i] = s;
+			i++;
+		}
+		return ss;
+	}
+
+	/**
+	 * Utility function that converts from meters to grid units.
+	 */
+	private double metersToGridUnits(double meters) {
+		final double INCHES_PER_METER = 39.3701;
+		return inchesToGridUnits(meters * INCHES_PER_METER);
+	}
+
+	/**
+	 * Utility function that converts from inches to grid units.
+	 */
+	private double inchesToGridUnits(double inches) {
+		return inches / map.gridSize;
 	}
 
 	/**

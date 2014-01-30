@@ -4,6 +4,7 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.geom.Line2D;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,6 +21,11 @@ import comm.BotClientMap;
 import comm.BotClientMap.Point;
 import comm.BotClientMap.Wall;
 
+/**
+ * OTHER IDEAS: Same algorithm but with wall distances? Same algorithm but just as incremental PID targets?
+ * @author cwgordon7
+ *
+ */
 public class PathFinder {
 	public static List<Point> findPath(BotClientMap m, Point origin, Point destination) throws NoPathFoundException {
 		PathFinderPoint start = new PathFinderPoint(new Point(origin.x, origin.y), distance(origin, destination));
@@ -43,20 +49,9 @@ public class PathFinder {
 				}
 				boolean invalid = false;
 				for (Wall w : m.walls) {
-					double dist = distance(w.start, w.end);
-					for (double i = 0.0; i <= dist+0.001; i += 0.5) {
-						double theta = Math.atan2(w.end.y - w.start.y, w.end.x - w.start.x);
-						Point p = new Point(w.start.x + i * Math.cos(theta), w.start.y + i * Math.sin(theta));
-						if (distance(p, neighbor) <= 0.25) {
-							invalid = true;
-							break;
-						}
-					}
-					if (distance(w.end, neighbor) < 0.25) {
+					double dist = Line2D.ptSegDist(w.start.x, w.start.y, w.end.x, w.end.y, neighbor.x, neighbor.y);
+					if (dist < 0.25) {
 						invalid = true;
-					}
-					if (invalid) {
-						break;
 					}
 				}
 				if (invalid) {
