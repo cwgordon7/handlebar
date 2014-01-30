@@ -169,7 +169,8 @@ public class Navigator {
 	public void relocalize() {
 		// Save the original pose.
 		Pose originalPose = pose;
-		double[] sonarEstimates = mapBasedSonarEstimates();
+		// TOOO
+		//double[] sonarEstimates = mapBasedSonarEstimates();
 		final double NUM_GUESSES = 100;
 		final double PROB_THRESH = 0.01;
 		for (int i = 0; i < NUM_GUESSES; i++) {
@@ -180,61 +181,17 @@ public class Navigator {
 	}
 
 	/**
-	 * Calculates a score for the given sonar readings, roughly representing the probability that they describe the true state (given the observed state).
-	 * @param sonarReadings
-	 * @return
-	 */
-	private double score(double sonarReadings) {
-		final double BOTCHED_READING = 0.05; // Perhaps 5% of readings will be botched?
-		// TODO finish
-		return 0.5;
-	}
-
-	private double[] mapBasedSonarEstimates() {
-		System.out.println(pose);
-		double thetaLeft = pose.theta + Math.PI / 2;
-		double thetaStraight = pose.theta;
-		double thetaRight = pose.theta - Math.PI / 2;
-		final double TEN_METERS = metersToGridUnits(10);
-		double[] ss = new double[3];
-		int i = 0;
-		for (double theta : new double[] {thetaLeft, thetaStraight, thetaRight}) {
-			double s = Double.POSITIVE_INFINITY;
-			for (Wall w : map.walls) {
-				if (Line2D.linesIntersect(w.start.x, w.start.y, w.end.x, w.end.y, pose.x, pose.y, pose.x + TEN_METERS * Math.cos(theta), pose.y + TEN_METERS * Math.sin(theta))) {
-					double r;
-					if (w.end.x - w.start.x != 0) {
-						double m = (w.end.y - w.start.y) / (w.end.x - w.start.x);
-						double b = w.start.y - (m * w.start.x);
-						r = (m * pose.x + b - pose.y) / (Math.sin(theta) - m * Math.cos(theta));
-					}
-					else {
-						double k = w.end.x;
-						r = (k - pose.x) / Math.cos(theta);
-					}
-					if (r > 0 && r < s) {
-						s = r;
-					}
-				}
-			}
-			ss[i] = s;
-			i++;
-		}
-		return ss;
-	}
-
-	/**
 	 * Utility function that converts from meters to grid units.
 	 */
-	private double metersToGridUnits(double meters) {
+	public static double metersToGridUnits(double meters, BotClientMap map) {
 		final double INCHES_PER_METER = 39.3701;
-		return inchesToGridUnits(meters * INCHES_PER_METER);
+		return inchesToGridUnits(meters * INCHES_PER_METER, map);
 	}
 
 	/**
 	 * Utility function that converts from inches to grid units.
 	 */
-	private double inchesToGridUnits(double inches) {
+	public static double inchesToGridUnits(double inches, BotClientMap map) {
 		return inches / map.gridSize;
 	}
 
@@ -243,7 +200,7 @@ public class Navigator {
 	 * negative pi and pi.
 	 * @param radians
 	 */
-	private double normalize(double radians) {
+	public static double normalize(double radians) {
 		while (radians > Math.PI) {
 			radians -= 2 * Math.PI;
 		}
