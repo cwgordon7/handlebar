@@ -107,6 +107,10 @@ public class Navigator {
 		double until = this.distance + inches;
 		while (this.distance < until) {
 			try {
+				if (interrupt()) {
+					interrupted();
+					return;
+				}
 				Thread.sleep(30);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -142,8 +146,12 @@ public class Navigator {
 	public void turnToHeadingRadians(double radians) {
 		this.targetHeading = radians;
 		setMode(Mode.TURN);
-		while (Math.abs(this.pose.theta - targetHeading) > TURN_THRESHOLD_RADIANS) {
+		while (Math.abs(normalize(this.pose.theta - targetHeading)) > TURN_THRESHOLD_RADIANS) {
 			try {
+				if (interrupt()) {
+					interrupted();
+					return;
+				}
 				Thread.sleep(30);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -163,6 +171,7 @@ public class Navigator {
 	 * Moves to a grid point.
 	 */
 	public void moveToPoint(Point p) throws NoPathFoundException {
+		System.out.println("moving...");
 		List<Point> points = PathFinder.findPath(map, pose, p);
 		boolean first = true;
 		for (Point point : points) {
@@ -219,14 +228,15 @@ public class Navigator {
 	}
 
 	public void spin() {
-		for (int i = 0; i <= 8; i++) {
+		for (int i = 0; i <= 8000; i++) {
 			System.out.println("turning... " + i);
-			turnRadians(Math.PI / 4);
+			//turnRadians(Math.PI / 4);
 			if (interrupt()) {
 				System.out.println("Interrupted.");
 				interrupted();
 				return;
 			}
+			Thread.yield();
 		}
 	}
 
@@ -245,12 +255,18 @@ public class Navigator {
 	}
 
 	public void getGreenBall() {
+		if (tracking) {
+			return;
+		}
+		else {
+			tracking = true;
+		}
 		System.out.println("Tracking green ball.");
 		while (true) {
 			if (Double.isNaN(Vision.greenBall)) {
 				break;
 			}
-			System.out.println(Vision.greenBall);
+			System.out.println("Green:" + Vision.greenBall);
 			targetHeading = pose.theta + (Vision.greenBall * Math.PI / 180.0);
 			if (Math.abs(targetHeading - pose.theta) <= TURN_THRESHOLD_RADIANS) {
 				forwardSquares(0.5, inchesToGridUnits(robot.getIRFront(), map));
@@ -264,18 +280,29 @@ public class Navigator {
 		}
 		System.out.println("Nope.");
 		halt();
+		tracking = false;
 	}
 
+	public boolean tracking = false;
 	public void getRedBall() {
+		if (tracking) {
+			return;
+		}
+		else {
+			tracking = true;
+		}
 		System.out.println("Tracking red ball.");
 		while (true) {
 			if (Double.isNaN(Double.NaN)) {
 				break;
 			}
+			System.out.println("Red:" + Vision.redBall);
+			setMode(Mode.TURN);
 			targetHeading = pose.theta + (Vision.redBall * Math.PI / 180.0);
 			if (Math.abs(targetHeading - pose.theta) <= TURN_THRESHOLD_RADIANS) {
 				forwardSquares(0.5, inchesToGridUnits(robot.getIRFront(), map));
 			}
+			Thread.yield();
 		}
 		try {
 			robot.setSorter(robot.SORTER_RED);
@@ -284,5 +311,6 @@ public class Navigator {
 			e.printStackTrace();
 		}
 		halt();
+		tracking = false;
 	}
 }

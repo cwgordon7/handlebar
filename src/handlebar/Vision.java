@@ -10,9 +10,11 @@ import org.opencv.highgui.*;
 
 public class Vision {
 	static VideoCapture camera;
-	public static double greenBall = Double.NaN;
-	public static double redBall = Double.NaN;
+	public static volatile double greenBall = Double.NaN;
+	public static volatile double redBall = Double.NaN;
 	private static boolean debug = false;
+	private static JLabel cameraPane;
+	private static JLabel opencvPane;
 	protected static Mat getSamplePicture() {
 		try {
 			Thread.sleep(1);
@@ -39,8 +41,8 @@ public class Vision {
 		}
 		return image;
 	}
-
-	public static void main(String args[]) {
+	
+	public static void setup() {
 		// Load the OpenCV library
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 
@@ -48,30 +50,34 @@ public class Vision {
 		camera = new VideoCapture();
 		camera.open(1);
 
+	}
+
+	public static void main(String args[]) {
+		setup();
+
 		// Create GUI windows to display camera output and OpenCV output
-		/*JLabel cameraPane;
-		JLabel opencvPane;
 		int width = (int) (camera.get(Highgui.CV_CAP_PROP_FRAME_WIDTH));
 		int height = (int) (camera.get(Highgui.CV_CAP_PROP_FRAME_HEIGHT));
 		cameraPane = createWindow("Camera output", width, height);
-		opencvPane = createWindow("OpenCV output", width, height);*/
+		opencvPane = createWindow("OpenCV output", width, height);
 
 		// Main loop
-		Mat rawImage = new Mat();
-
-		for (int k = 0; k < 1000; k++) {
+		process();
+	}
+	
+	public static void process() {
 			Mat m = getVideoPicture();
 			if (debug) {
-				//updateWindow(cameraPane, m);
+				updateWindow(cameraPane, m);
 			}
 			Mat pm_green = ImageProcessor.process(m.clone(), false);
 			Vision.greenBall = ImageProcessor.getBearing(pm_green);
 			Mat pm_red = ImageProcessor.process(m.clone(), true);
 			Vision.redBall = ImageProcessor.getBearing(pm_red);
 			if (debug) {
-				//updateWindow(opencvPane, pm_green);
+				updateWindow(opencvPane, pm_green);
 			}
-		}
+			Thread.yield();
 	}
 
     private static JLabel createWindow(String name, int width, int height) {    

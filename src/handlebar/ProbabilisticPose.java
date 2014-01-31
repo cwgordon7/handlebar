@@ -98,7 +98,6 @@ public class ProbabilisticPose {
 	public void resample(BotClientMap map, double[] sonarReadings) {
 		//System.out.println(Arrays.toString(sonarReadings));
 		//System.out.println(Arrays.toString(mapBasedSonarEstimates(find(0.5 * scale, 0, NUM_TRIALS), map)));
-		this.drawState(map);
 		double j = 0.0;
 		Pose[] newPoses = new Pose[NUM_TRIALS];
 		double[] newProbs = new double[NUM_TRIALS];

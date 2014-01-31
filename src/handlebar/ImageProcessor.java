@@ -75,7 +75,7 @@ public class ImageProcessor {
 		int centerPixelX = bb.x + bb.width / 2;
 		final double CAMERA_ANGLE = 120;
 		double deg = CAMERA_ANGLE * (double)centerPixelX / (double)binImg.width() - CAMERA_ANGLE / 2;
-		return deg;
+		return -deg;
 	}
 
 	public static Rect largestBlob(Mat binaryImg) {

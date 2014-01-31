@@ -9,9 +9,9 @@ public class Handlebar {
 	public final static String BOT_CLIENT_SERVER = "18.150.7.174:6667";
 	public final static String TEAM_16_TOKEN = "Nj5fd3q7pe";
 	public static void main(String[] args) {
-		/*BotClient bc = new BotClient(BOT_CLIENT_SERVER, TEAM_16_TOKEN, false);
+		BotClient bc = new BotClient(BOT_CLIENT_SERVER, TEAM_16_TOKEN, false);
 		bc.send("status", "Status", "Waiting for game to start.");
-		/*while (!bc.gameStarted()) {
+		while (!bc.gameStarted()) {
 			try {
 				Thread.sleep(100);
 			}
@@ -21,12 +21,27 @@ public class Handlebar {
 		}
 		BotClientMap map = new BotClientMap();
 		map.load(bc.getMap());
-		map.drawMap();*/
+		
 		// comment this out -v
-		BotClientMap map = BotClientMap.getDefaultMap();
+		//BotClientMap map = BotClientMap.getDefaultMap();
 		Robot robot = new Robot(map.startPose.theta);
 		robot.setSorter(robot.SORTER_GREEN);
 		Navigator nav = new Navigator(robot, map);
+		nav.forwardSquares(0.5, 1);
+		Vision.setup();
+		Vision.process();
+		
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				while (true) {
+					Vision.process();
+					Thread.yield();
+				}
+			}
+		}).start();
+		Thread.yield();
 
 		boolean spun = false;
 		while (true) {
@@ -61,6 +76,7 @@ public class Handlebar {
 				while (!moved) {
 					try {
 						Point p = map.randomPoint();
+						System.out.println("Moving to " + p);
 						nav.moveToPoint(p);
 						moved = true;
 					} catch (NoPathFoundException e) {
