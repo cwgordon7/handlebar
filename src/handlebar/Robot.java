@@ -33,14 +33,16 @@ public class Robot {
 	final public static double ROBOT_RADIUS_INCHES = 7;
 	final public static double FRONT_SONAR_INCHES = 5.5;
 	
-	final public int GREEN_BALL_CAPACITY = 10;
-	final public int RED_BALL_CAPACITY = 4;
+	final public int GREEN_BALL_CAPACITY = 3; //10;
+	final public int RED_BALL_CAPACITY = 3; //4;
     // Speed scaling from 0.05 to 0.3. TODO: Raise the limit to go faster.
-	final public double MIN_POWER = 0.07;
-	final public double POWER_SCALE = 0.35;
+	final public double MIN_POWER = 0.12;
+	final public double POWER_SCALE = 0.38;
 	// Sorter constants
 	final public double SORTER_GREEN = 55.0;
 	final public double SORTER_RED = 120.0;
+	public int numGreenBalls = 0;
+	public int numRedBalls = 0;
 
 	public Robot(double initHeading) {
 		heading = initHeading;

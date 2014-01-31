@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 
+import comm.BotClientMap.Point;
+
 public class BotClientMap {
 	public double gridSize;
 	public Pose startPose;
@@ -172,5 +174,25 @@ public class BotClientMap {
 		map.drawMap();
 		System.out.println(map);
 		System.out.println(map.toBotClientString());
+	}
+
+	public Point randomPoint() {
+		double maxx = Double.NEGATIVE_INFINITY;
+		double minx = Double.POSITIVE_INFINITY;
+		double maxy = Double.NEGATIVE_INFINITY;
+		double miny = Double.POSITIVE_INFINITY;
+		for (Wall w : walls) {
+			maxx = Math.max(maxx, w.start.x);
+			maxx = Math.max(maxx, w.end.x);
+			minx = Math.min(minx, w.start.x);
+			minx = Math.min(minx, w.end.x);
+			maxy = Math.max(maxy, w.start.y);
+			maxy = Math.max(maxy, w.end.y);
+			miny = Math.min(miny, w.start.y);
+			miny = Math.min(miny, w.end.y);
+		}
+		double x = Math.random() * (maxx - minx) + minx;
+		double y = Math.random() * (maxy - miny) + miny;
+		return new Point(x, y);
 	}
 }

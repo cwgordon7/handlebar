@@ -38,26 +38,21 @@ public class Navigator {
 		        		final double dTheta = robot.getHeadingRadians() - pose.theta;
 		        		final double distanceSinceLastUpdate = (robot.getTotalDistance() - distance) / map.gridSize; // The "unit" here is the grid size, or 22 inches. EG if the robot has gone 44 inches, the "distance travelled" will be 2 grid squares.
 		        		distance = robot.getTotalDistance();
-		        		new Thread(new Runnable() {
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								if (mode.equals(Mode.STRAIGHT)) {
-									probPose.perturb(distanceSinceLastUpdate, dTheta);
-								}
-								else {
-									probPose.perturb(0.0, dTheta);
-								}
-								if (lastRecalcMillis != 0 && System.currentTimeMillis() - lastRecalcMillis > 500) {
-									probPose.resample(map, new double[] {  inchesToGridUnits(robot.getIRLeft(), map), inchesToGridUnits(robot.getIRFront(), map), inchesToGridUnits(robot.getIRRight(), map) });
-									lastRecalcMillis = System.currentTimeMillis();
-								}
-								else if (lastRecalcMillis == 0) {
-									lastRecalcMillis = System.currentTimeMillis();
-								}
-				        		pose = probPose.representativePose();
-							}
-		        		}).start();
+						if (mode.equals(Mode.STRAIGHT)) {
+							probPose.perturb(distanceSinceLastUpdate, dTheta);
+						}
+						else {
+							probPose.perturb(0.0, dTheta);
+						}
+						if (lastRecalcMillis != 0 && System.currentTimeMillis() - lastRecalcMillis > 2000) {
+							System.out.println("Resampling");
+							probPose.resample(map, new double[] {  inchesToGridUnits(robot.getIRLeft(), map), inchesToGridUnits(robot.getIRFront(), map), inchesToGridUnits(robot.getIRRight(), map) });
+							lastRecalcMillis = System.currentTimeMillis();
+						}
+						else if (lastRecalcMillis == 0) {
+							lastRecalcMillis = System.currentTimeMillis();
+						}
+		        		pose = probPose.representativePose();
 		        		switch (mode) {
 			        		case WALL_FOLLOW:
 			        			return 0.0; // TODO
@@ -111,7 +106,6 @@ public class Navigator {
 		setMode(Mode.STRAIGHT);
 		double until = this.distance + inches;
 		while (this.distance < until) {
-			System.out.println(this.distance + " < " + until);
 			try {
 				Thread.sleep(30);
 			} catch (InterruptedException e) {
@@ -213,5 +207,82 @@ public class Navigator {
 			radians += 2 * Math.PI;
 		}
 		return radians;
+	}
+
+	public void depositGreenBalls() {
+		// TODO Auto-generated method stub
+		System.out.println("...");
+	}
+
+	public void depositRedBalls() {
+		System.out.println("...");
+	}
+
+	public void spin() {
+		for (int i = 0; i <= 8; i++) {
+			System.out.println("turning... " + i);
+			turnRadians(Math.PI / 4);
+			if (interrupt()) {
+				System.out.println("Interrupted.");
+				interrupted();
+				return;
+			}
+		}
+	}
+
+	private boolean interrupt() {
+		return (!Double.isNaN(Vision.greenBall) && (robot.numRedBalls < robot.RED_BALL_CAPACITY)) ||
+			   (!Double.isNaN(Vision.greenBall) && (robot.numGreenBalls < robot.GREEN_BALL_CAPACITY)); // TODO: or timeout?
+	}
+	private void interrupted() {
+		if (!Double.isNaN(Vision.greenBall) && (robot.numGreenBalls < robot.GREEN_BALL_CAPACITY)) {
+			this.getGreenBall();
+		}
+		else if (!Double.isNaN(Vision.greenBall) && (robot.numRedBalls < robot.RED_BALL_CAPACITY)) {
+			this.getRedBall();
+		}
+		System.out.println("Just kidding?");
+	}
+
+	public void getGreenBall() {
+		System.out.println("Tracking green ball.");
+		while (true) {
+			if (Double.isNaN(Vision.greenBall)) {
+				break;
+			}
+			System.out.println(Vision.greenBall);
+			targetHeading = pose.theta + (Vision.greenBall * Math.PI / 180.0);
+			if (Math.abs(targetHeading - pose.theta) <= TURN_THRESHOLD_RADIANS) {
+				forwardSquares(0.5, inchesToGridUnits(robot.getIRFront(), map));
+			}
+		}
+		try {
+			robot.setSorter(robot.SORTER_GREEN);
+			Thread.sleep(2000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		System.out.println("Nope.");
+		halt();
+	}
+
+	public void getRedBall() {
+		System.out.println("Tracking red ball.");
+		while (true) {
+			if (Double.isNaN(Double.NaN)) {
+				break;
+			}
+			targetHeading = pose.theta + (Vision.redBall * Math.PI / 180.0);
+			if (Math.abs(targetHeading - pose.theta) <= TURN_THRESHOLD_RADIANS) {
+				forwardSquares(0.5, inchesToGridUnits(robot.getIRFront(), map));
+			}
+		}
+		try {
+			robot.setSorter(robot.SORTER_RED);
+			Thread.sleep(2000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		halt();
 	}
 }

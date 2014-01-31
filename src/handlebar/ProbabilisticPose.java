@@ -7,6 +7,7 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.Line2D;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -95,6 +96,9 @@ public class ProbabilisticPose {
 	 * return the same thing, on average. 
 	 */
 	public void resample(BotClientMap map, double[] sonarReadings) {
+		//System.out.println(Arrays.toString(sonarReadings));
+		//System.out.println(Arrays.toString(mapBasedSonarEstimates(find(0.5 * scale, 0, NUM_TRIALS), map)));
+		this.drawState(map);
 		double j = 0.0;
 		Pose[] newPoses = new Pose[NUM_TRIALS];
 		double[] newProbs = new double[NUM_TRIALS];
@@ -157,6 +161,9 @@ public class ProbabilisticPose {
 	private double score(double[] sonarEstimates, double[] sonarReadings) {
 		double p = 1.0 / Math.sqrt(scale); /* Keep the scale semi-normal here: If scale gets to small, this will make it bigger; if scale gets to large, this will make it smaller. This would not be necessary if we were doing proper Bayesian logic here. */
 		for (int i = 0; i < sonarEstimates.length; i++) {
+			if (sonarReadings[i] == Double.POSITIVE_INFINITY) {
+				continue;
+			}
 			double errorZ = (sonarReadings[i] - sonarEstimates[i]) / (Math.sqrt(2) * SONAR_STDERR);
 			/** This is a bad approximation. TODO: Do better. */
 			p *= ((ULTRASOUND_FLAKINESS) + (1 - ULTRASOUND_FLAKINESS) * normal(errorZ));
@@ -212,10 +219,10 @@ public class ProbabilisticPose {
 
 	public static void main(String[] args) {
 		BotClientMap m = BotClientMap.getDefaultMap();
-		m.startPose = new Pose(5.0, 3.5, 0.0);
+		m.startPose = new Pose(2.0, 1.0, 0.0);
 		ProbabilisticPose p = new ProbabilisticPose(m.startPose, 20000);
 		try {
-			p = moveToPointTest(p, m, new Pose(m.startPose.x, m.startPose.y, m.startPose.theta), new Point(2.5, 3.5));
+			p = moveToPointTest(p, m, new Pose(m.startPose.x, m.startPose.y, m.startPose.theta), new Point(1.0, 3.5));
 		} catch (NoPathFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -244,13 +251,14 @@ public class ProbabilisticPose {
 			pose.x += Math.cos(pose.theta) * distWithErr;
 			pose.y += Math.sin(pose.theta) * distWithErr;
 			double[] sonarReadings = mapBasedSonarEstimates(pose, m);
-			// sonarReadings[0] = 10 * Math.random();
-			// sonarReadings[1] = 9.9;
-			//sonarReadings[2] = 9.9;
+			//sonarReadings[0] = Double.POSITIVE_INFINITY;
+			//sonarReadings[1] = 9.9;
+			//sonarReadings[2] = Double.POSITIVE_INFINITY;
 			for (int i = 0; i < 3; i++) { sonarReadings[i] *= (1.0 + random.nextGaussian() * SONAR_STDERR); }
 			probPose.perturb(dist, dtheta);
 			probPose.resample(m, sonarReadings);
 			probPose.drawState(m);
+			System.out.println(probPose.representativePose());
 			try {
 				Thread.sleep(500);
 			} catch (InterruptedException e) {
@@ -278,10 +286,17 @@ public class ProbabilisticPose {
 			if (p == null) {
 				continue;
 			}
-			x_avg += p.x * probs[i];
-			y_avg += p.y * probs[i];
-			thetaX += Math.cos(p.theta) * probs[i];
-			thetaY += Math.sin(p.theta) * probs[i];
+			double prob;
+			if (i == 0) {
+				prob = probs[i];
+			}
+			else {
+				prob = probs[i] - probs[i-1];
+			}
+			x_avg += (p.x * prob);
+			y_avg += (p.y * prob);
+			thetaX += Math.cos(p.theta) * prob;
+			thetaY += Math.sin(p.theta) * prob;
 		}
 		x_avg /= scale;
 		y_avg /= scale;

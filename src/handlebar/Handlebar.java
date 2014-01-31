@@ -22,43 +22,53 @@ public class Handlebar {
 		BotClientMap map = new BotClientMap();
 		map.load(bc.getMap());
 		map.drawMap();*/
+		// comment this out -v
 		BotClientMap map = BotClientMap.getDefaultMap();
 		Robot robot = new Robot(map.startPose.theta);
 		robot.setSorter(robot.SORTER_GREEN);
 		Navigator nav = new Navigator(robot, map);
-		try {
-			nav.moveToPoint(new Point(0.5, 3.5));
-		} catch (NoPathFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		nav.probPose.drawState(map);
 
-		// Uncomment to draw the map, for reference.
-		// map.drawMap();
-		// nav.forwardSquares(0.5, 1);
-		// nav.turnRadians(0);
-		//nav.halt();
-		// System.out.println("SUCCESS");
-
-		// Uncomment to test moving to a point.
-//		try {
-//			nav.moveToPoint(new Point(2.5, 3.5));
-//		} catch (NoPathFoundException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-
-		// Uncomment to debug the sonars.
-		/*while (true) {
-			System.out.println(robot.getIRLeft() + " | " + robot.getIRFront() + " | " + robot.getIRRight());
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+		boolean spun = false;
+		while (true) {
+			if (robot.numGreenBalls == robot.GREEN_BALL_CAPACITY) {
+				System.out.println("At green ball capacity - depositing green balls.");
+				nav.depositGreenBalls();
+				spun = false;
 			}
-			Thread.yield();
-		}*/
+			else if (robot.numRedBalls == robot.RED_BALL_CAPACITY) {
+				System.out.println("At red ball capacity - depositing red balls.");
+				nav.depositRedBalls();
+				spun = false;
+			}
+			else if (robot.numGreenBalls > 0) {
+				System.out.println("Depositing green balls.");
+				nav.depositGreenBalls();
+				spun = false;
+			}
+			else if (robot.numRedBalls > 0) {
+				System.out.println("Depositing red balls.");
+				nav.depositRedBalls();
+				spun = false;
+			}
+			else if (!spun) {
+				System.out.println("Spinning!");
+				nav.spin();
+				spun = true;
+			}
+			else {
+				System.out.println("Random walk.");
+				boolean moved = false;
+				while (!moved) {
+					try {
+						Point p = map.randomPoint();
+						nav.moveToPoint(p);
+						moved = true;
+					} catch (NoPathFoundException e) {
+						// Unreachable point! Choose a different one.
+					}
+				}
+				spun = false;
+			}
+		}
 	}
 }
