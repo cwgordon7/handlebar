@@ -186,15 +186,15 @@ public class PathFinder {
 			}
   			
 		}
-	}	
+	}
 
 	private static BotClientMap m;
 	private static List<Point> dots;
-	private static Point target = new Point(2.5, 3.5);
+	private static Point target = new Point(BotClientMap.getDefaultMap().startPose.x, BotClientMap.getDefaultMap().startPose.y);
 	public static void main(String[] args) {
 		m = BotClientMap.getDefaultMap();
 		try {
-			dots = findPath(m, new Point(5.0, 3.5), target);
+			dots = findPath(m, new Point(1.0, 3.5), target);
 		} catch (NoPathFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

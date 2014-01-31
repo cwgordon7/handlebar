@@ -47,8 +47,16 @@ public class ProbabilisticPose {
 		if (low == high) {
 			return poses[low];
 		}
+		else if (high - low == 1) {
+			if (probs[high] < k) {
+				return poses[high];
+			}
+			else {
+				return poses[low];
+			}
+		}
 		int guess = (high + low) / 2;
-		if (probs[guess] <= k) {
+		if (probs[guess] < k) {
 			return find(k, guess, high);
 		}
 		else {
@@ -115,6 +123,7 @@ public class ProbabilisticPose {
 		double[] ss = new double[3];
 		int i = 0;
 		for (double theta : new double[] {thetaLeft, thetaStraight, thetaRight}) {
+			double offset = (i == 1) ? Navigator.inchesToGridUnits(Robot.ROBOT_RADIUS_INCHES, map) : Navigator.inchesToGridUnits(Robot.FRONT_SONAR_INCHES, map);
 			double s = Double.POSITIVE_INFINITY;
 			for (Wall w : map.walls) {
 				if (Line2D.linesIntersect(w.start.x, w.start.y, w.end.x, w.end.y, pose.x, pose.y, pose.x + TEN_METERS * Math.cos(theta), pose.y + TEN_METERS * Math.sin(theta))) {
@@ -122,11 +131,11 @@ public class ProbabilisticPose {
 					if (w.end.x - w.start.x != 0) {
 						double m = (w.end.y - w.start.y) / (w.end.x - w.start.x);
 						double b = w.start.y - (m * w.start.x);
-						r = (m * pose.x + b - pose.y) / (Math.sin(theta) - m * Math.cos(theta));
+						r = ((m * pose.x + b - pose.y) / (Math.sin(theta) - m * Math.cos(theta))) - offset;
 					}
 					else {
 						double k = w.end.x;
-						r = (k - pose.x) / Math.cos(theta);
+						r = ((k - pose.x) / Math.cos(theta)) - offset;
 					}
 					if (r > 0 && r < s) {
 						s = r;
@@ -190,6 +199,9 @@ public class ProbabilisticPose {
 				}
 				else {
 					prob = probs[i] - probs[i-1];
+				}
+				if (poses[i] == null) {
+					continue;
 				}
 				int w =  (int)(255.0 * Math.min(1, NUM_TRIALS * prob / (1.5 * scale)));
 				g.setColor(new Color(255, 255 - w, 255 - w));

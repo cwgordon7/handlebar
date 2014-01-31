@@ -21,12 +21,14 @@ public class Navigator {
 
 	private final Robot robot;
 	private final BotClientMap map;
+	private long lastRecalcMillis = 0;
 
-	private final double TURN_THRESHOLD_RADIANS = Math.PI / 36.0; // 5 degrees.
+	private final double TURN_THRESHOLD_RADIANS = Math.PI / 18.0; // 10 degrees.
 	public Navigator(Robot bot, BotClientMap m) {
 		this.robot = bot;
 		this.map = m;
 		pose = m.startPose;
+		targetHeading = pose.theta;
 		probPose = new ProbabilisticPose(m.startPose, 1000);
         // TODO: Tune these parameters based on experimentation.
         new PidController(1, 0, 0.75,
@@ -46,7 +48,13 @@ public class Navigator {
 								else {
 									probPose.perturb(0.0, dTheta);
 								}
-				        		probPose.resample(map, new double[] { robot.getSonar1(), robot.getSonar2(), robot.getSonar3() });
+								if (lastRecalcMillis != 0 && System.currentTimeMillis() - lastRecalcMillis > 500) {
+									probPose.resample(map, new double[] {  inchesToGridUnits(robot.getIRLeft(), map), inchesToGridUnits(robot.getIRFront(), map), inchesToGridUnits(robot.getIRRight(), map) });
+									lastRecalcMillis = System.currentTimeMillis();
+								}
+								else if (lastRecalcMillis == 0) {
+									lastRecalcMillis = System.currentTimeMillis();
+								}
 				        		pose = probPose.representativePose();
 							}
 		        		}).start();
@@ -103,13 +111,17 @@ public class Navigator {
 		setMode(Mode.STRAIGHT);
 		double until = this.distance + inches;
 		while (this.distance < until) {
-			if (Math.random() < 0.01) {
-				System.out.println(this.distance + " < " + until);
-			}
+			System.out.println(this.distance + " < " + until);
 			try {
 				Thread.sleep(30);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
+			}
+			if (until - this.distance < 5) {
+				this.speed = Math.min(0.3, this.speed);
+			}
+			if (until - this.distance < 2) {
+				this.speed = Math.min(0.2, this.speed);
 			}
 			Thread.yield();
 		}
@@ -169,7 +181,7 @@ public class Navigator {
 			System.out.println("Turning to " + (int)180 / Math.PI * theta);
 			turnToHeadingRadians(theta);
 			System.out.println("Forward " + Math.sqrt((point.y - pose.y) * (point.y - pose.y) + (point.x - pose.x) * (point.x - pose.x)));
-			forwardSquares(0.5, Math.sqrt((point.y - pose.y) * (point.y - pose.y) + (point.x - pose.x) * (point.x - pose.x)));
+			forwardSquares(0.3, Math.sqrt((point.y - pose.y) * (point.y - pose.y) + (point.x - pose.x) * (point.x - pose.x)));
 		}
 	}
 

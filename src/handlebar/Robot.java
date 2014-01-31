@@ -6,7 +6,7 @@ import devices.actuators.Cytron;
 import devices.actuators.Servo1800A;
 import devices.sensors.Encoder;
 import devices.sensors.Gyroscope;
-import devices.sensors.Ultrasonic;
+import devices.sensors.Infrared;
 
 public class Robot {
 	private MapleComm maple;
@@ -20,21 +20,24 @@ public class Robot {
 	// Encoder
 	final private Encoder encoder = new Encoder(33, 34); // TODO: Which is which? Wrong order?
 	// Ultrasonic
-	final private Ultrasonic sonic1 = new Ultrasonic(28, 27); // Right side.
-	final private Ultrasonic sonic2 = new Ultrasonic(26, 25); // Center
-	final private Ultrasonic sonic3 = new Ultrasonic(24, 23); // Left side
+	final private Infrared irLeft = new Infrared(17); // Left side
+	final private Infrared irFront = new Infrared(16); // Center
+	final private Infrared irRight = new Infrared(15); // Right side
 
 	// Internal tracking.
 	private long lastTimeMillis;
 	private double heading;
 
 	// Robot dimensional constants.
-	final public double WHEEL_RADIUS_INCHES = 3.875 / 2;
+	final public static double WHEEL_RADIUS_INCHES = 3.875 / 2;
+	final public static double ROBOT_RADIUS_INCHES = 7;
+	final public static double FRONT_SONAR_INCHES = 5.5;
+	
 	final public int GREEN_BALL_CAPACITY = 10;
 	final public int RED_BALL_CAPACITY = 4;
     // Speed scaling from 0.05 to 0.3. TODO: Raise the limit to go faster.
-	final public double MIN_POWER = 0.05;
-	final public double POWER_SCALE = 0.25;
+	final public double MIN_POWER = 0.07;
+	final public double POWER_SCALE = 0.35;
 	// Sorter constants
 	final public double SORTER_GREEN = 55.0;
 	final public double SORTER_RED = 120.0;
@@ -48,9 +51,9 @@ public class Robot {
 			maple.registerDevice(sorterServo);
 			maple.registerDevice(gyro);
 			maple.registerDevice(encoder);
-			maple.registerDevice(sonic1);
-			maple.registerDevice(sonic2);
-			maple.registerDevice(sonic3);
+			maple.registerDevice(irLeft);
+			maple.registerDevice(irFront);
+			maple.registerDevice(irRight);
 			maple.initialize();
 
 			// Continually update the sensor data.
@@ -64,6 +67,11 @@ public class Robot {
 							heading += (millis * gyro.getAngularSpeed()) / -1000.0;
 						}
 						lastTimeMillis = time;
+						try {
+							Thread.sleep(10);
+						} catch(InterruptedException e) {
+							e.printStackTrace();
+						}
 						Thread.yield();
 					}
 				}
@@ -92,22 +100,22 @@ public class Robot {
 	/**
 	 * Gets the distance given by sonar 1, in meters.
 	 */
-	public double getSonar1() {
-		return sonic1.getDistance();
+	public double getIRLeft() {
+		return irLeft.getDistance();
 	}
 
 	/**
 	 * Gets the distance given by sonar 2, in meters.
 	 */
-	public double getSonar2() {
-		return sonic2.getDistance();
+	public double getIRFront() {
+		return irFront.getDistance();
 	}
 
 	/**
 	 * Gets the distance given by sonar 3, in meters.
 	 */
-	public double getSonar3() {
-		return sonic3.getDistance();
+	public double getIRRight() {
+		return irRight.getDistance();
 	}
 
 	/**
